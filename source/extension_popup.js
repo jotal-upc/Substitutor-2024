@@ -19,16 +19,24 @@ let amount = 0
 
 function get_blocked_urls(){
     browser.runtime.sendMessage({method: 'get_blocked_urls'}, function(response) {
-        //alert(JSON.stringify(response));
+        // alert(JSON.stringify(response));
         if(response && response.length > 0){
             amount += response.length;
-            document.getElementById('p1').innerHTML = amount;
+            document.getElementById('num').innerHTML = amount;
+
+            for (let i = 0; i < response.length; i++) {
+                let row = document.getElementById('url_table').insertRow();
+                let cell1 = row.insertCell(0);
+                let cell2 = row.insertCell(1);
+                cell1.innerHTML = response[i].host;
+                cell2.innerHTML = response[i].url;
+            }
         }
         else{
-            document.getElementById('p1').appendChild(document.createTextNode("0"));
+            document.getElementById('p1').innerHTML = "0";
         }
-        //document.getElementById('blocked_urls').appendChild(document.createElement("br"));
-        //document.getElementById('blocked_urls').appendChild(document.createElement("br"));
+        // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
+        // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
 	});
 }
 

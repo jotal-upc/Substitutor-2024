@@ -6,7 +6,7 @@
 
 p{
     text-align: center;
-    font-size: 20px;
+    font-size: 16px;
 }
 
 h1{
@@ -24,8 +24,8 @@ h4{
     font-size: 14px;
 }
 body {
-    min-width: 300px;
-    max-width: 300px;
+    min-width: 600px;
+    max-width: 600px;
     font-size: 12px;
     margin: 0;
     color: white;
@@ -34,9 +34,8 @@ body {
     }
 
 div.titleDiv{
-            position: relative;
-            text-align: center;
-
+    position: relative;
+    text-align: center;
 }
 
 div.urls{
@@ -49,6 +48,19 @@ div.urls{
 
 div.footDiv{
     padding-left: 10px;
+}
+
+th{
+    font-size: 14px;
+    border-bottom: 1px solid #999999;
+}
+
+table tr:nth-child(odd) td{
+    background:#e6e6e6;
+}
+
+table tr:nth-child(even) td{
+    background:#ffffff;
 }
 
 img.logo{
