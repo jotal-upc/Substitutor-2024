@@ -20,7 +20,7 @@
 
   "browser_action": {
      "default_icon": "icons/icon_16.png",
-     "default_popup": "extension_popup.html"
+     "default_popup": "popup/extension_popup.html"
  },
 
  "browser_specific_settings": {
@@ -32,6 +32,6 @@
 
 
    "background": {
-        "scripts": ["resource_scripts/jquery-3.5.1.min.js","background.js"]
+        "scripts": ["lib/jquery-3.5.1.min.js","background.js"]
     }
 }
