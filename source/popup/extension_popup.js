@@ -33,7 +33,7 @@ function get_blocked_urls(){
             }
         }
         else{
-            document.getElementById('p1').innerHTML = "0";
+            document.getElementById('num').innerHTML = "0";
         }
         // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
         // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
