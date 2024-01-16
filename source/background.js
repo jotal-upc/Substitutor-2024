@@ -76,10 +76,9 @@ async function writeBlacklist() {
 
 
 async function getRemoteHashlistHash() {
-   let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/list.hash');
-   // let content = await response.text();
-   // return content;
-    return await response.text();
+    let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/list.hash');
+    let content = await response.text();
+    return content;
 }
 
 
@@ -269,14 +268,16 @@ browser.webRequest.onBeforeRequest.addListener(
                 block = true;
                 let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/' + isTracking[1][0] + '/' + isTracking[1].concat(".js"));
                 let new_data = await response.arrayBuffer();
-                console.debug(details.url + " blocked and replaced by Track Substituter. HASH: " + isTracking[0]);
+                console.debug(details.url + " blocked and replaced by Substitutor");
+                console.debug("(Replaced: " + isTracking[0] + " => " + isTracking[1] + ")");
+                await updateHashCounter(isTracking[1]);
 
                 //add info to tabinfo
                 let aux_URL = await new URL(request_url);
                 updateTabInfo(details.tabId,aux_URL);
                 await writeFilter(filterReq, new_data);
-
-            } else {
+            }
+            else {
                 await writeFilter(filterReq, data);
             }
         }
@@ -351,3 +352,36 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     //this is to prevent error message "Unchecked runtime.lastError: The message port closed before a response was received." from appearing needlessly
     sendResponse();
 });
+
+
+// ############################################### SCRIPT CACHE MANAGER ###############################################
+//
+// The main goal of implementing a cache mem is to reduce the number of requests sent to the repo, and therefore also
+// reduce the time it takes to obtain the clean javascript code.
+//
+// The extension should keep the X most replaced clean scripts in cache, by saving them in the browser's local storage.
+// The extension should also maintain a counter of the times each clean script has been used, in order to store only
+// the most used ones.
+//
+async function updateHashCounter(resourceHash) {
+    // Updates hash resource counter
+    let aux = await browser.storage.local.get("hashCounter");
+    let hashCounter = aux.hashCounter;
+    if (hashCounter === undefined) {
+        console.debug("Hash counter not found. Initializing counter...");
+        hashCounter = [];
+    }
+    let found = false;
+    for (let i = 0; i < hashCounter.length; i++) {
+        if (hashCounter[i][0] === resourceHash) {
+            hashCounter[i][1] += 1;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        hashCounter.push([resourceHash, 1]);
+        console.debug("New counter entry => hash: " + resourceHash);
+    }
+    browser.storage.local.set({hashCounter});
+}
