@@ -270,12 +270,19 @@ browser.webRequest.onBeforeRequest.addListener(
                 let new_data = await response.arrayBuffer();
                 console.debug(details.url + " blocked and replaced by Substitutor");
                 console.debug("(Replaced: " + isTracking[0] + " => " + isTracking[1] + ")");
-                await updateHashCounter(isTracking[1]);
 
                 //add info to tabinfo
                 let aux_URL = await new URL(request_url);
                 updateTabInfo(details.tabId,aux_URL);
                 await writeFilter(filterReq, new_data);
+
+                // Post script substitution cache management section
+                // Update stats + Store script if needed
+                let needCache = await updateHashCounter(isTracking[1]);
+                if (needCache) {
+                    await storeInCache(isTracking[1], new_data);
+                }
+
             }
             else {
                 await writeFilter(filterReq, data);
@@ -362,26 +369,71 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 // The extension should keep the X most replaced clean scripts in cache, by saving them in the browser's local storage.
 // The extension should also maintain a counter of the times each clean script has been used, in order to store only
 // the most used ones.
-//
+
+
+// Minimum number of appearances that a script needs to be saved in cache
+let cacheMinNumber = 5;
+// Maximum number of scripts that can be stored in cache
+let cacheMaxScripts = 10;
+
 async function updateHashCounter(resourceHash) {
-    // Updates hash resource counter
+    // Updates hash resource counter + returns true if the script corresponding to
+    // resourceHash has to be saved in cache (if it reaches the minimum number of appearances)
     let aux = await browser.storage.local.get("hashCounter");
     let hashCounter = aux.hashCounter;
     if (hashCounter === undefined) {
-        console.debug("Hash counter not found. Initializing counter...");
+        console.debug("[counter] Initializing counter...");
         hashCounter = [];
     }
     let found = false;
+    let counter = 0;
     for (let i = 0; i < hashCounter.length; i++) {
         if (hashCounter[i][0] === resourceHash) {
             hashCounter[i][1] += 1;
+            counter = hashCounter[i][1];
             found = true;
             break;
         }
     }
     if (!found) {
         hashCounter.push([resourceHash, 1]);
-        console.debug("New counter entry => hash: " + resourceHash);
+        counter = 1;
+        console.debug("[counter] Added new entry => hash: " + resourceHash);
     }
     browser.storage.local.set({hashCounter});
+    return (cacheMinNumber === counter);
 }
+
+async function storeInCache(resourceHash, resourceScript) {
+    // Stores the corresponding resource hash and script in local storage
+    let aux = await browser.storage.local.get("resourceCache");
+    let resourceCache = aux.resourceCache;
+    if (resourceCache === undefined) {
+        console.debug("[cache] Initializing cache...");
+        resourceCache = [];
+    }
+    // resourceCache[index][0] => Resource hash
+    // resourceCache[index][1] => Resource script
+    // resourceCache[index][2] => Timestamp that indicates last time resource was accessed
+    let lastAccess = Date.now();
+    if (resourceCache.length === cacheMaxScripts) {
+        // If the cache has reached its maximum size, the entry which has been used least recently
+        // has to be substituted.
+        let oldestIndex = 0;
+        let oldestTime = resourceCache[0][2];
+        for (let i = 1; i < resourceCache.length; i++) {
+            if (resourceCache[i][2] < oldestTime) {
+                oldestTime = resourceCache[i][2];
+                oldestIndex = i;
+            }
+        }
+        console.debug("[cache] Max Size reached. Dropped oldest entry (hash: " + resourceCache[oldestIndex][0] + ")");
+        resourceCache[oldestIndex] = [resourceHash, resourceScript, lastAccess];
+    }
+    else {
+        resourceCache.push([resourceHash, resourceScript, lastAccess]);
+    }
+    console.debug("[cache] Added new entry => hash: " + resourceHash);
+    browser.storage.local.set({resourceCache});
+}
+
