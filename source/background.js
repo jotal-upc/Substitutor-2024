@@ -414,6 +414,20 @@ async function updateHashCounter(resourceHash) {
     return (cacheMinNumber === counter);
 }
 
+async function resetHashCounter(resourceHash) {
+    // Sets resource counter back to 0 for given resource.
+    // !! Should only be called after removing an entry from the script cache !!
+    let aux = await browser.storage.local.get("hashCounter");
+    let hashCounter = aux.hashCounter;
+    for (let i = 0; i < hashCounter.length; i++) {
+        if (hashCounter[i][0] === resourceHash) {
+            hashCounter[i][1] = 0;
+            break;
+        }
+    }
+    browser.storage.local.set({hashCounter});
+}
+
 async function storeInCache(resourceHash, resourceScript) {
     // Stores the corresponding resource hash and script in local storage
     let aux = await browser.storage.local.get("resourceCache");
@@ -437,6 +451,10 @@ async function storeInCache(resourceHash, resourceScript) {
                 oldestIndex = i;
             }
         }
+        // When dropping an element from the cache we should reset its counter back to 0, because if not it would
+        // increase indefinitely and wouldn't be able to reach back the cacheMinNumber, and it would never be able
+        // to enter resourceCache again.
+        await resetHashCounter(resourceCache[oldestIndex][0]);
         console.debug("[cache] Max Size reached. Dropped oldest entry (hash: " + resourceCache[oldestIndex][0] + ")");
         resourceCache[oldestIndex] = [resourceHash, resourceScript, lastAccess];
     }
