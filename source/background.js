@@ -262,12 +262,22 @@ browser.webRequest.onBeforeRequest.addListener(
             let hash = await hash_func(data);
             let isTracking = await isOnBlacklist(hash);
 
-            let block = false;
+            if (isTracking[0] !== "") { // Has to be blocked
+                let new_data;
+                let cacheSearch = await getFromCache(isTracking[1]);
 
-            if (isTracking[0] !== "") {
-                block = true;
-                let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/' + isTracking[1][0] + '/' + isTracking[1].concat(".js"));
-                let new_data = await response.arrayBuffer();
+                // Resource is present in cache
+                if (cacheSearch[0]) {
+                    new_data = cacheSearch[1];
+                    console.debug("Clean resource retrieved from CACHE => hash: " + isTracking[1]);
+                }
+                // Resource is not present in cache => Has to be retrieved from repo
+                else {
+                    let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/' + isTracking[1][0] + '/' + isTracking[1].concat(".js"));
+                    new_data = await response.arrayBuffer();
+                    console.debug("Clean resource retrieved from REPO => hash: " + isTracking[1]);
+                }
+
                 console.debug(details.url + " blocked and replaced by Substitutor");
                 console.debug("(Replaced: " + isTracking[0] + " => " + isTracking[1] + ")");
 
@@ -435,5 +445,21 @@ async function storeInCache(resourceHash, resourceScript) {
     }
     console.debug("[cache] Added new entry => hash: " + resourceHash);
     browser.storage.local.set({resourceCache});
+}
+
+async function getFromCache(resourceHash) {
+    // Returns a pair (array size=2), where the first element indicates if the resource is present in cache,
+    // and if it is true, the second element is the arraybuffer (script content).
+    let aux = await browser.storage.local.get("resourceCache");
+    let resourceCache = aux.resourceCache;
+    if (resourceCache !== undefined) {
+        for (let i = 0; i < resourceCache.length; i++) {
+            if (resourceCache[i][0] === resourceHash) {
+                resourceCache[i][2] = Date.now(); // Update timestamp
+                return [true, resourceCache[i][1]];
+            }
+        }
+    }
+    return [false, null]; // Returns this in case the cache is not initialized or the resource is not present in cache
 }
 
