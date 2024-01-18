@@ -23,6 +23,7 @@ function get_blocked_urls(){
         if(response && response.length > 0){
             amount += response.length;
             document.getElementById('num').innerHTML = amount;
+            document.getElementById('blocked_table').style.display = "block";
 
             for (let i = 0; i < response.length; i++) {
                 let row = document.getElementById('url_table').insertRow();
@@ -34,6 +35,7 @@ function get_blocked_urls(){
         }
         else{
             document.getElementById('num').innerHTML = "0";
+            document.getElementById('blocked_table').style.display = "none";
         }
         // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
         // document.getElementById('blocked_urls').appendChild(document.createElement("br"));

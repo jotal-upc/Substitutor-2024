@@ -39,17 +39,26 @@
         </div>
         <br>
         <div id="blocked_urls" class="urls">
-            <h3>Resources substituted:</h3>
-            <h3 id="num">0</h3>
-            <br>
             <div align="middle">
-            <table id="url_table">
-                <tr>
-                    <th>Host</th>
-                    <th>URL</th>
-                </tr>
+            <table id="main_table">
+                <td><h3>Resources substituted:</h3></td>
+                <td><h3 id="num">0</h3></td>
             </table>
             </div>
+            <br>
+            <details id="blocked_table">
+                <summary>View substituted elements:</summary>
+                <p>
+                    <div align="middle">
+                    <table id="url_table">
+                        <tr>
+                            <th>Host</th>
+                            <th>URL</th>
+                        </tr>
+                    </table>
+                    </div>
+                </p>
+            </details>
         </div>
   </body>
 </html>
