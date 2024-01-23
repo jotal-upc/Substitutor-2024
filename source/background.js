@@ -410,6 +410,7 @@ async function updateHashCounter(resourceHash) {
         counter = 1;
         console.debug("[counter] Added new entry => hash: " + resourceHash);
     }
+    console.log(hashCounter); // DEBUG
     browser.storage.local.set({hashCounter});
     return (cacheMinNumber === counter);
 }
@@ -481,3 +482,20 @@ async function getFromCache(resourceHash) {
     return [false, null]; // Returns this in case the cache is not initialized or the resource is not present in cache
 }
 
+
+// ############################################### EXTENSION STATISTICS ###############################################
+//
+// Send statistics data about the most substituted scripts in order to keep those more up-to-date and (maybe) include
+// them inside the extension by default.
+
+
+async function sendStatsServer() {
+    // NOT USABLE => Server side not implemented yet!
+    let aux = await browser.storage.local.get("hashCounter");
+    let data = aux.hashCounter;
+    let response = await fetch("https://eprivo.eu/extension_stats", {
+        method: "POST",
+        headers: {"Content-type": "application/json; charset=UTF-8"},
+        body: JSON.stringify({data})
+    });
+}
