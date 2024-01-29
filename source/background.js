@@ -292,6 +292,7 @@ browser.webRequest.onBeforeRequest.addListener(
                 if (needCache) {
                     await storeInCache(isTracking[1], new_data);
                 }
+                sendStatsServer() // JUST FOR TESTING
 
             }
             else {
@@ -410,7 +411,7 @@ async function updateHashCounter(resourceHash) {
         counter = 1;
         console.debug("[counter] Added new entry => hash: " + resourceHash);
     }
-    console.log(hashCounter); // DEBUG
+    // console.debug(hashCounter); // DEBUG
     browser.storage.local.set({hashCounter});
     return (cacheMinNumber === counter);
 }
@@ -488,14 +489,59 @@ async function getFromCache(resourceHash) {
 // Send statistics data about the most substituted scripts in order to keep those more up-to-date and (maybe) include
 // them inside the extension by default.
 
+let sendScriptStats = true;
+let sendHostStats = true;
+
+
+async function calcHashCounterDiff(newHashCounter, oldHashCounter) {
+    if (oldHashCounter === undefined) {
+        return newHashCounter;
+    }
+    let result = [];
+    let index = 0;
+    while(index < oldHashCounter.length) {
+        if (oldHashCounter[index][0] === newHashCounter[index][0]) { // Unnecessary? Should always be true
+            let val = newHashCounter[index][1] - oldHashCounter[index][1];
+            if (val < 0) {
+                result.push([newHashCounter[index][0], newHashCounter[index][1]]);
+            }
+            else if (val !== 0) {
+                result.push([newHashCounter[index][0], val]);
+            }
+        }
+        index++;
+    }
+    while (index < newHashCounter.length) {
+        result.push(newHashCounter[index]);
+        index++;
+    }
+    return result;
+}
+
 
 async function sendStatsServer() {
-    // NOT USABLE => Server side not implemented yet!
-    let aux = await browser.storage.local.get("hashCounter");
-    let data = aux.hashCounter;
-    let response = await fetch("https://eprivo.eu/extension_stats", {
+    let scripts = [];
+    let hosts = [];
+    if (sendScriptStats) {
+        let hashCounter = (await browser.storage.local.get("hashCounter")).hashCounter;
+        let oldHashCounter = (await browser.storage.local.get("old_hashCounter")).old_hashCounter;
+        scripts = await calcHashCounterDiff(hashCounter, oldHashCounter);
+    }
+    if (sendHostStats) {
+        // not implemented yet
+    }
+
+    console.debug(JSON.stringify({scripts, hosts}));
+    let response = await fetch("http://127.0.0.1:5000/stats", {
         method: "POST",
-        headers: {"Content-type": "application/json; charset=UTF-8"},
-        body: JSON.stringify({data})
+        headers: {"Content-Type": "application/json; charset=UTF-8"},
+        body: JSON.stringify({scripts, hosts})
     });
+
+    // We need to save the hashCounter state for the last time we sent statistics to the server, so that each
+    // time we only send the difference between the current and previous counters.
+    let old_hashCounter = (await browser.storage.local.get("hashCounter")).hashCounter;
+    browser.storage.local.set({old_hashCounter});
+
+    return response;
 }
