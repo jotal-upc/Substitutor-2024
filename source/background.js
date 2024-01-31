@@ -17,20 +17,21 @@
 
 //############################################## GLOBAL VARIABLES ##############################################
 
-//Boolean that indicates if extension's filter is activated or not
-let filter = true;
+// ============== GENERAL PURPOSE VARIABLES ==============
+let filter = true; // Boolean that indicates if extension's filter is activated or not
+let tabsInfo = new Map(); //Info about current open tabs will be handled in this variable
+let whitelisted_matches; // Whitelisted elements to avoid some false positives that affect some websites functioning, stored in whitelist.json
+let hash_block_list = ["", ""]; //Content block_list: a list of SHA-256 hashes for the content-blocker
 
-//Info about current open tabs will be handled in this variable
-let tabsInfo = new Map();
+// ============== CACHE MANAGEMENT VARIABLES ==============
+let cacheMinNumber = 5; // Minimum number of appearances that a script needs to be saved in cache
+let cacheMaxScripts = 10; // Maximum number of scripts that can be stored in cache
 
-//Whitelisted elements to avoid some false positives that affect some websites functioning, stored in whitelist.json
-let whitelisted_matches;
+// ============== EXTENSION STATISTICS VARIABLES ==============
+let sendScriptStats = true;
+let saveHostStats = true;
+let sendHostStats = true;
 
-//Content block_list: a list of SHA-256 hashes for the content-blocker
-let hash_block_list = ["", ""];
-
-// let used for statistical data
-// let stats_map = new Map();
 
 //change badge color (badge shows the number of suspicious url blocked on a website)
 browser.browserAction.setBadgeBackgroundColor({color:'#cf1b1b'});
@@ -205,6 +206,7 @@ function updateTabInfo (idTab, aux_URL){
         tabsInfo.get(idTab).blocked.push(blocked_info);
 
         tabsInfo.set(idTab,  tabsInfo.get(idTab));
+        tabsInfo.set(idTab,  tabsInfo.get(idTab));
 
         browser.browserAction.setBadgeText(
             {tabId: idTab, text: ((tabsInfo.get(idTab).blocked.length).toString())}
@@ -227,26 +229,26 @@ browser.webRequest.onBeforeRequest.addListener(
         const idTab = details.tabId;
 
         //needed when tab created in background
-        if (idTab >= 0 && !tabsInfo.has(idTab)){
+        if (idTab >= 0 && !tabsInfo.has(idTab)) {
             newInfo(idTab);
         }
 
-        if (tabsInfo.get(idTab) === undefined){
+        if (tabsInfo.get(idTab) === undefined) {
             return;
         }
 
         let aux_URL = new URL(request_url);
         let tabHost = tabsInfo.get(idTab).host;
 
-        //checks whitelist
-        for (let key in whitelisted_matches){
-            if (aux_URL.href.includes(whitelisted_matches[key])){
+        // checks whitelist
+        for (let key in whitelisted_matches) {
+            if (aux_URL.href.includes(whitelisted_matches[key])) {
                 console.debug("Allowed by whitelist: " + request_url);
                 return;
             }
         }
 
-        //CONTENT BLOCKER
+        // CONTENT BLOCKER
         let filterReq = browser.webRequest.filterResponseData(details.requestId);
         let tmp_data = [];
 
@@ -292,7 +294,8 @@ browser.webRequest.onBeforeRequest.addListener(
                 if (needCache) {
                     await storeInCache(isTracking[1], new_data);
                 }
-                sendStatsServer() // JUST FOR TESTING
+
+                await sendStatsServer() // JUST FOR TESTING
 
             }
             else {
@@ -308,6 +311,19 @@ browser.webRequest.onBeforeRequest.addListener(
     ["blocking"]
 );
 
+
+// TESTING -> Store host information
+browser.webRequest.onCompleted.addListener(
+    async function(details) {
+        let tabHost = tabsInfo.get(details.tabId).host;
+        // Update host stats table (only if the user agrees)
+        if (saveHostStats && tabHost !== "") {
+            await updateHostsData(tabHost);
+        }
+    },
+    {urls: ["<all_urls>"]},
+    []
+);
 
 
 // ############################################## TABS LISTENERS ##############################################
@@ -381,11 +397,6 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 // The extension should also maintain a counter of the times each clean script has been used, in order to store only
 // the most used ones.
 
-
-// Minimum number of appearances that a script needs to be saved in cache
-let cacheMinNumber = 5;
-// Maximum number of scripts that can be stored in cache
-let cacheMaxScripts = 10;
 
 async function updateHashCounter(resourceHash) {
     // Updates hash resource counter + returns true if the script corresponding to
@@ -489,9 +500,6 @@ async function getFromCache(resourceHash) {
 // Send statistics data about the most substituted scripts in order to keep those more up-to-date and (maybe) include
 // them inside the extension by default.
 
-let sendScriptStats = true;
-let sendHostStats = true;
-
 
 async function calcHashCounterDiff(newHashCounter, oldHashCounter) {
     if (oldHashCounter === undefined) {
@@ -519,16 +527,61 @@ async function calcHashCounterDiff(newHashCounter, oldHashCounter) {
 }
 
 
+async function saveOldHashCounter() {
+    // We need to save the hashCounter state for the last time we sent statistics to the server, so that each
+    // time we only send the difference between the current and previous counters.
+    let old_hashCounter = (await browser.storage.local.get("hashCounter")).hashCounter;
+    browser.storage.local.set({old_hashCounter});
+}
+
+
+async function updateHostsData(hostname) {
+    // hostStats[index][0] => hostname string
+    // hostStats[index][1] => number of visits since last time data was sent to the server
+    // hostStats[index][2] => has been previously announced to the server? (0: yes, 1: no)
+    let hostStats = (await browser.storage.local.get("hostStats")).hostStats;
+    if (hostStats === undefined) {
+        console.debug("[host-stats] Initializing host stats...");
+        hostStats = [];
+    }
+    let found = false;
+    for (let i = 0; i < hostStats.length; i++) {
+        if (hostStats[i][0] === hostname) {
+            hostStats[i][1] += 1;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        hostStats.push([hostname, 1, 1]);
+        console.debug("[host-stats] Added new entry => hostname: " + hostname);
+    }
+    // console.debug(hostStats); // DEBUG
+    browser.storage.local.set({hostStats});
+}
+
+
+async function resetHostsData() {
+    let hostStats = (await browser.storage.local.get("hostStats")).hostStats;
+    for (let i = 0; i < hostStats.length; i++) {
+        hostStats[i][1] = 0;
+        hostStats[i][2] = 0;
+    }
+    browser.storage.local.set({hostStats});
+}
+
+
 async function sendStatsServer() {
     let scripts = [];
     let hosts = [];
+
     if (sendScriptStats) {
         let hashCounter = (await browser.storage.local.get("hashCounter")).hashCounter;
         let oldHashCounter = (await browser.storage.local.get("old_hashCounter")).old_hashCounter;
         scripts = await calcHashCounterDiff(hashCounter, oldHashCounter);
     }
     if (sendHostStats) {
-        // not implemented yet
+        hosts = (await browser.storage.local.get("hostStats")).hostStats;
     }
 
     console.debug(JSON.stringify({scripts, hosts}));
@@ -538,10 +591,8 @@ async function sendStatsServer() {
         body: JSON.stringify({scripts, hosts})
     });
 
-    // We need to save the hashCounter state for the last time we sent statistics to the server, so that each
-    // time we only send the difference between the current and previous counters.
-    let old_hashCounter = (await browser.storage.local.get("hashCounter")).hashCounter;
-    browser.storage.local.set({old_hashCounter});
+    if (sendScriptStats) await saveOldHashCounter();
+    if (sendHostStats) await resetHostsData();
 
     return response;
 }
