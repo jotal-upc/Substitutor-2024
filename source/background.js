@@ -24,13 +24,17 @@ let whitelisted_matches; // Whitelisted elements to avoid some false positives t
 let hash_block_list = ["", ""]; //Content block_list: a list of SHA-256 hashes for the content-blocker
 
 // ============== CACHE MANAGEMENT VARIABLES ==============
-let cacheMinNumber = 5; // Minimum number of appearances that a script needs to be saved in cache
-let cacheMaxScripts = 10; // Maximum number of scripts that can be stored in cache
+const cacheMinNumber = 5; // Minimum number of appearances that a script needs to be saved in cache
+const cacheMaxScripts = 10; // Maximum number of scripts that can be stored in cache
 
 // ============== EXTENSION STATISTICS VARIABLES ==============
+let statsEnabled = true;
 let sendScriptStats = true;
 let saveHostStats = true;
 let sendHostStats = true;
+
+const minStatUpdates = 10; // Send stats to the server after reaching 'minStatUpdates' resources substituted
+let currStatUpdates = 0;
 
 
 //change badge color (badge shows the number of suspicious url blocked on a website)
@@ -295,8 +299,10 @@ browser.webRequest.onBeforeRequest.addListener(
                     await storeInCache(isTracking[1], new_data);
                 }
 
-                await sendStatsServer() // JUST FOR TESTING
-
+                currStatUpdates++;
+                if (statsEnabled && currStatUpdates >= minStatUpdates) {
+                    await sendStatsServer(); // Same function resets 'currStatUpdates' back to zero if api POST is successful
+                }
             }
             else {
                 await writeFilter(filterReq, data);
@@ -585,14 +591,16 @@ async function sendStatsServer() {
     }
 
     console.debug(JSON.stringify({scripts, hosts}));
-    let response = await fetch("http://127.0.0.1:5000/stats", {
+    const response = await fetch("http://127.0.0.1:5000/stats", {
         method: "POST",
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: JSON.stringify({scripts, hosts})
     });
 
-    if (sendScriptStats) await saveOldHashCounter();
-    if (sendHostStats) await resetHostsData();
-
+    if (response.ok) {
+        if (sendScriptStats) await saveOldHashCounter();
+        if (sendHostStats) await resetHostsData();
+        currStatUpdates = 0;
+    }
     return response;
 }
