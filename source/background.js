@@ -577,6 +577,18 @@ async function resetHostsData() {
 }
 
 
+async function getHostsToSend(hostArray) {
+    // Only send hosts whose stats have changed, in order to reduce post api call size
+    let result = [];
+    for (let i = 0; i < hostArray.length; i++) {
+        if (hostArray[i][1] !== 0) {
+            result.push(hostArray[i]);
+        }
+    }
+    return result;
+}
+
+
 async function sendStatsServer() {
     let scripts = [];
     let hosts = [];
@@ -587,10 +599,11 @@ async function sendStatsServer() {
         scripts = await calcHashCounterDiff(hashCounter, oldHashCounter);
     }
     if (sendHostStats) {
-        hosts = (await browser.storage.local.get("hostStats")).hostStats;
+        let auxHostStats = (await browser.storage.local.get("hostStats")).hostStats;
+        hosts = await getHostsToSend(auxHostStats);
     }
 
-    console.debug(JSON.stringify({scripts, hosts}));
+    console.debug("POST body => " + JSON.stringify({scripts, hosts}));
     const response = await fetch("http://127.0.0.1:5000/stats", {
         method: "POST",
         headers: {"Content-Type": "application/json; charset=UTF-8"},
