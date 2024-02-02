@@ -17,28 +17,81 @@
 
 let amount = 0
 
-function get_blocked_urls(){
-    browser.runtime.sendMessage({method: 'get_blocked_urls'}, function(response) {
-        // alert(JSON.stringify(response));
-        if(response && response.length > 0){
-            amount += response.length;
-            document.getElementById('num').innerHTML = amount;
-            document.getElementById('blocked_table').style.display = "block";
 
-            for (let i = 0; i < response.length; i++) {
-                let row = document.getElementById('url_table').insertRow();
-                let cell1 = row.insertCell(0);
-                let cell2 = row.insertCell(1);
-                cell1.innerHTML = response[i].host;
-                cell2.innerHTML = response[i].url;
+function organizeBlockedHostUrls(data) {
+    // resultData => {hostname: [[url, times_replaced], ...]}
+    let resultData = new Map();
+    for (let i = 0; i < data.length; i++) {
+        if (resultData.has(data[i].host)) {
+            let auxArray = resultData.get(data[i].host);
+            let found = false;
+            for (let j = 0; j < auxArray.length && !found; j++) {
+                if (data[i].url === auxArray[j][0]) {
+                    auxArray[j][1] += 1;
+                    found = true;
+                }
             }
+            if (!found) auxArray.push([data[i].url, 1]);
+            resultData.set(data[i].host, auxArray);
+        }
+        else {
+            resultData.set(data[i].host, [[data[i].url, 1]]);
+        }
+    }
+    return resultData;
+}
+
+
+function createHostUrlStructure(hostname, data) {
+    const hostDetails = document.createElement("details");
+    const hostSummary = document.createElement("summary");
+    const hostHeading = document.createElement("h4");
+    hostHeading.textContent = hostname;
+
+    const hostUrlTable = document.createElement("table");
+    for (let i = 0; i < data.length; i++) {
+        let row = hostUrlTable.insertRow();
+        let cell1 = row.insertCell(0);
+        let cell2 = row.insertCell(1);
+        cell1.innerHTML = data[i][0];
+        cell2.innerHTML = data[i][1];
+    }
+
+    hostSummary.appendChild(hostHeading);
+    hostDetails.appendChild(hostSummary);
+    hostDetails.appendChild(hostUrlTable);
+
+    hostUrlTable.style.paddingTop = "10px";
+    hostDetails.style.paddingBottom = "10px";
+    hostDetails.style.paddingTop = "10px";
+    hostDetails.style.borderTop = "2px solid #f1f1f1";
+
+    return hostDetails;
+}
+
+
+function getBlockedUrls(){
+    browser.runtime.sendMessage({method: 'get_blocked_urls'}, function(response) {
+        if(response && response.length > 0){
+
+            const blockedUrls = document.getElementById('blocked_urls');
+
+            let parsedData = organizeBlockedHostUrls(response);
+            parsedData.forEach (function(value, key) {
+                // console.log(key + JSON.stringify(value));
+                const hostStruct = createHostUrlStructure(key, value);
+                blockedUrls.appendChild(hostStruct);
+            })
+
+            // amount += response.length;
+            // document.getElementById('num').innerHTML = amount;
+            // document.getElementById('blocked_table').style.display = "block";
+
         }
         else{
-            document.getElementById('num').innerHTML = "0";
-            document.getElementById('blocked_table').style.display = "none";
+            // document.getElementById('num').innerHTML = "0";
+            // document.getElementById('blocked_table').style.display = "none";
         }
-        // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
-        // document.getElementById('blocked_urls').appendChild(document.createElement("br"));
 	});
 }
 
@@ -61,4 +114,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-get_blocked_urls();
+getBlockedUrls();
