@@ -21,10 +21,12 @@ h3{
     display: inline;
     font-size: 16px;
 }
+
 h4{
     display: inline;
     font-size: 14px;
 }
+
 body {
     min-width: 400px;
     max-width: 400px;
@@ -57,6 +59,7 @@ th{
     border-bottom: 1px solid #999999;
 }
 
+/*
 table tr:nth-child(odd) td{
     background:#ffffff;
 }
@@ -64,6 +67,7 @@ table tr:nth-child(odd) td{
 table tr:nth-child(even) td{
     background:#e6e6e6;
 }
+*/
 
 img.logo{
     border-radius: 50%;

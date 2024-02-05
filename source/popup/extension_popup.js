@@ -15,23 +15,28 @@
  * limitations under the License.
  */
 
-let amount = 0
+let unique_amount = 0;
+let total_amount = 0;
 
 
 function organizeBlockedHostUrls(data) {
     // resultData => {hostname: [[url, times_replaced], ...]}
     let resultData = new Map();
     for (let i = 0; i < data.length; i++) {
+        // Check if hostname is in map
         if (resultData.has(data[i].host)) {
             let auxArray = resultData.get(data[i].host);
             let found = false;
+            // Check if URL is in hostname urls list
             for (let j = 0; j < auxArray.length && !found; j++) {
                 if (data[i].url === auxArray[j][0]) {
                     auxArray[j][1] += 1;
                     found = true;
                 }
             }
-            if (!found) auxArray.push([data[i].url, 1]);
+            if (!found) {
+                auxArray.push([data[i].url, 1]);
+            }
             resultData.set(data[i].host, auxArray);
         }
         else {
@@ -42,22 +47,64 @@ function organizeBlockedHostUrls(data) {
 }
 
 
+function truncateUrl(str) {
+    const size = 96;
+    if (str.length <= size) {
+        return str;
+    }
+    return str.slice(0, size) + '...';
+}
+
+
 function createHostUrlStructure(hostname, data) {
     const hostDetails = document.createElement("details");
     const hostSummary = document.createElement("summary");
-    const hostHeading = document.createElement("h4");
-    hostHeading.textContent = hostname;
+
+    // Summary content
+    const hostnameTable = document.createElement("table");
+    const hostnameRow = document.createElement("tr");
+    const hostnameCellLeft = document.createElement("td");
+    const hostnameCellRight = document.createElement("td");
+    const hostnameHeading = document.createElement("h4");
+    hostnameHeading.textContent = hostname;
+    let hostnameResourceAmount = 0;
 
     const hostUrlTable = document.createElement("table");
     for (let i = 0; i < data.length; i++) {
-        let row = hostUrlTable.insertRow();
-        let cell1 = row.insertCell(0);
-        let cell2 = row.insertCell(1);
-        cell1.innerHTML = data[i][0];
-        cell2.innerHTML = data[i][1];
+        const row = document.createElement("tr");
+        const urlCell = document.createElement("td");
+        const timesCell = document.createElement("td");
+
+        urlCell.textContent = truncateUrl(data[i][0]);
+        urlCell.style.width = "370px";
+        timesCell.textContent = data[i][1];
+        timesCell.style.width = "30px";
+
+        row.appendChild(urlCell);
+        row.appendChild(timesCell);
+        hostUrlTable.appendChild(row);
+
+        hostnameResourceAmount += data[i][1];
+        unique_amount++;
     }
 
-    hostSummary.appendChild(hostHeading);
+    // const hostnameResources = document.createElement("h4");
+    // hostnameResources.textContent = "[" + hostnameResourceAmount + "]";
+
+    hostnameCellLeft.appendChild(hostnameHeading);
+    // hostnameCellRight.appendChild(hostnameResources);
+    hostnameCellRight.textContent = "[" + hostnameResourceAmount + "]";
+    hostnameCellRight.style.fontSize = "14px";
+    hostnameCellLeft.style.width = "370px";
+    hostnameCellRight.style.width = "30px";
+
+    hostnameRow.appendChild(hostnameCellLeft);
+    hostnameRow.appendChild(hostnameCellRight);
+    hostnameTable.appendChild(hostnameRow);
+    // hostnameTable.style.display = "inline-table";
+
+    hostSummary.appendChild(hostnameTable);
+    hostSummary.style.display = "inline-table";
     hostDetails.appendChild(hostSummary);
     hostDetails.appendChild(hostUrlTable);
 
@@ -83,14 +130,16 @@ function getBlockedUrls(){
                 blockedUrls.appendChild(hostStruct);
             })
 
-            // amount += response.length;
-            // document.getElementById('num').innerHTML = amount;
-            // document.getElementById('blocked_table').style.display = "block";
+            total_amount += response.length;
 
+            document.getElementById('num_unique').innerHTML = unique_amount.toString();
+            document.getElementById('num_total').innerHTML = total_amount.toString();
+            document.getElementById('num_hosts').innerHTML = parsedData.size.toString();
         }
         else{
-            // document.getElementById('num').innerHTML = "0";
-            // document.getElementById('blocked_table').style.display = "none";
+            document.getElementById('num_unique').innerHTML = "0";
+            document.getElementById('num_total').innerHTML = "0";
+            document.getElementById('num_hosts').innerHTML = "0";
         }
 	});
 }
