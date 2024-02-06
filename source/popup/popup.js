@@ -48,7 +48,7 @@ function organizeBlockedHostUrls(data) {
 
 
 function truncateUrl(str) {
-    const size = 96;
+    const size = 64;
     if (str.length <= size) {
         return str;
     }
