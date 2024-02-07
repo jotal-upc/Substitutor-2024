@@ -28,11 +28,6 @@ const cacheMinNumber = 5; // Minimum number of appearances that a script needs t
 const cacheMaxScripts = 10; // Maximum number of scripts that can be stored in cache
 
 // ============== EXTENSION STATISTICS VARIABLES ==============
-let statsEnabled = true;
-let sendScriptStats = true;
-let saveHostStats = true;
-let sendHostStats = true;
-
 const minStatUpdates = 10; // Send stats to the server after reaching 'minStatUpdates' resources substituted
 let currStatUpdates = 0;
 
@@ -300,7 +295,7 @@ browser.webRequest.onBeforeRequest.addListener(
                 }
 
                 currStatUpdates++;
-                if (statsEnabled && currStatUpdates >= minStatUpdates) {
+                if ((await getScriptStatsEnabled() || await getHostStatsEnabled()) && (currStatUpdates >= minStatUpdates)) {
                     await sendStatsServer(); // Same function resets 'currStatUpdates' back to zero if api POST is successful
                 }
             }
@@ -317,20 +312,20 @@ browser.webRequest.onBeforeRequest.addListener(
     ["blocking"]
 );
 
-
+/* DISABLED AT THE TIME
 // TESTING -> Store host information
 browser.webRequest.onCompleted.addListener(
     async function(details) {
         let tabHost = tabsInfo.get(details.tabId).host;
         // Update host stats table (only if the user agrees)
-        if (saveHostStats && tabHost !== "") {
+        if (await getHostStatsEnabled() && tabHost !== "") {
             await updateHostsData(tabHost);
         }
     },
     {urls: ["<all_urls>"]},
     []
 );
-
+*/
 
 // ############################################## TABS LISTENERS ##############################################
 let current_tab;
@@ -507,6 +502,26 @@ async function getFromCache(resourceHash) {
 // them inside the extension by default.
 
 
+async function getScriptStatsEnabled() {
+    let scriptStatsEnabled = (await browser.storage.local.get("scriptStatsEnabled")).scriptStatsEnabled;
+    if (scriptStatsEnabled === undefined) {
+        scriptStatsEnabled = false;
+        browser.storage.local.set({scriptStatsEnabled});
+    }
+    return scriptStatsEnabled;
+}
+
+
+async function getHostStatsEnabled() {
+    let hostStatsEnabled = (await browser.storage.local.get("hostStatsEnabled")).hostStatsEnabled;
+    if (hostStatsEnabled === undefined) {
+        hostStatsEnabled = false;
+        browser.storage.local.set({hostStatsEnabled});
+    }
+    return hostStatsEnabled;
+}
+
+
 async function calcHashCounterDiff(newHashCounter, oldHashCounter) {
     if (oldHashCounter === undefined) {
         return newHashCounter;
@@ -593,12 +608,12 @@ async function sendStatsServer() {
     let scripts = [];
     let hosts = [];
 
-    if (sendScriptStats) {
+    if (await getScriptStatsEnabled()) {
         let hashCounter = (await browser.storage.local.get("hashCounter")).hashCounter;
         let oldHashCounter = (await browser.storage.local.get("old_hashCounter")).old_hashCounter;
         scripts = await calcHashCounterDiff(hashCounter, oldHashCounter);
     }
-    if (sendHostStats) {
+    if (await getHostStatsEnabled()) {
         let auxHostStats = (await browser.storage.local.get("hostStats")).hostStats;
         hosts = await getHostsToSend(auxHostStats);
     }
@@ -611,8 +626,8 @@ async function sendStatsServer() {
     });
 
     if (response.ok) {
-        if (sendScriptStats) await saveOldHashCounter();
-        if (sendHostStats) await resetHostsData();
+        if (await getScriptStatsEnabled()) await saveOldHashCounter();
+        if (await getHostStatsEnabled()) await resetHostsData();
         currStatUpdates = 0;
     }
     return response;
