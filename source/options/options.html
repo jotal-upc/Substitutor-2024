@@ -2,16 +2,20 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
+        <link rel="stylesheet" href="style.css">
     </head>
     <body>
+        <div class="container">
+        <h1>ePrivo Cleaner | Options</h1>
 
         <form>
             <input type="checkbox" id="enableScriptStats" value="enableScriptStats">
-            <label for="enableScriptStats">Allow the extension to share script usage statistics.</label>
+            <label class="checkbox-label" for="enableScriptStats">Allow the extension to share script usage statistics.</label>
             <br>
             <input type="checkbox" id="enableHostStats" value="enableHostStats">
-            <label for="enableHostStats">Allow the extension to share host visit statistics.</label>
+            <label class="checkbox-label" for="enableHostStats">Allow the extension to share host visit statistics.</label>
         </form>
+        </div>
 
         <script src="options.js"></script>
     </body>

@@ -1,0 +1,23 @@
+* {
+    color: white;
+    font-family: system-ui, Roboto;
+}
+
+body {
+    background-color: #545454;
+}
+
+h1 {
+    text-align: center;
+}
+
+.container {
+    width: 40%;
+    margin: 5% auto;
+    background-color: #4c4c4c;
+    padding: 20px;
+}
+
+.checkbox-label {
+    font-size: 17px;
+}
