@@ -6,15 +6,25 @@
     </head>
     <body>
         <div class="container">
-        <h1>ePrivo Cleaner | Options</h1>
-
-        <form>
-            <input type="checkbox" id="enableScriptStats" value="enableScriptStats">
-            <label class="checkbox-label" for="enableScriptStats">Allow the extension to share script usage statistics.</label>
+            <h1>ePrivo Cleaner | Settings</h1>
             <br>
-            <input type="checkbox" id="enableHostStats" value="enableHostStats">
-            <label class="checkbox-label" for="enableHostStats">Allow the extension to share host visit statistics.</label>
-        </form>
+            <h3>Data sharing options:</h3>
+            <form>
+                <input type="checkbox" id="enableScriptStats" value="enableScriptStats">
+                <label class="checkbox-label" for="enableScriptStats">Allow the extension to share script usage statistics.</label>
+                <br>
+                <input type="checkbox" id="enableHostStats" value="enableHostStats">
+                <label class="checkbox-label" for="enableHostStats">Allow the extension to share host visit statistics.</label>
+            </form>
+            <br>
+            <h3>Script cache management options:</h3>
+            <form>
+                <label class="number-label">Minimum number of appearances for a script to appear in cache: </label>
+                <input class="number-input" type="number" id="cacheMinAppears" value="cacheMinAppears" min="1" max="999" step="1">
+                <br>
+                <label class="number-label">Maximum number of scripts that can be stored in cache: </label>
+                <input class="number-input" type="number" id="cacheMaxScripts" value="cacheMaxScripts" min="1" max="999" step="1">
+            </form>
         </div>
 
         <script src="options.js"></script>

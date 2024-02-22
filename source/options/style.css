@@ -11,8 +11,12 @@ h1 {
     text-align: center;
 }
 
+.number-input {
+    color: black;
+}
+
 .container {
-    width: 40%;
+    width: 75%;
     margin: 5% auto;
     background-color: #4c4c4c;
     padding: 20px;

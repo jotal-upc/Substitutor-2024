@@ -23,9 +23,10 @@ let tabsInfo = new Map(); //Info about current open tabs will be handled in this
 let whitelisted_matches; // Whitelisted elements to avoid some false positives that affect some websites functioning, stored in whitelist.json
 let hash_block_list = ["", ""]; //Content block_list: a list of SHA-256 hashes for the content-blocker
 
-// ============== CACHE MANAGEMENT VARIABLES ==============
-const cacheMinNumber = 5; // Minimum number of appearances that a script needs to be saved in cache
-const cacheMaxScripts = 10; // Maximum number of scripts that can be stored in cache
+// ============== BASE REPO/API PATHS ==============
+const base_repo_path = "https://raw.githubusercontent.com/ismael-castell/Replacements/main";
+const base_api_path = "https://eprivo.eu/api/api.php?";
+const base_stat_api_path = "http://127.0.0.1:5000"; // Testing only
 
 // ============== EXTENSION STATISTICS VARIABLES ==============
 const minStatUpdates = 10; // Send stats to the server after reaching 'minStatUpdates' resources substituted
@@ -76,7 +77,7 @@ async function writeBlacklist() {
 
 
 async function getRemoteHashlistHash() {
-    let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/list.hash');
+    let response = await fetch(base_repo_path + '/list.hash');
     let content = await response.text();
     return content;
 }
@@ -111,7 +112,7 @@ async function updateHashlist() {
     //@debug
     console.debug("downloading new hash block list.");
 
-    let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/list.csv');
+    let response = await fetch(base_repo_path + '/list.csv');
     let online_content = (await response.text()).split("\n");
     let hashDB_content = await parseBlacklist(online_content);
     browser.storage.local.set({hashDB_content});
@@ -274,7 +275,7 @@ browser.webRequest.onBeforeRequest.addListener(
                 }
                 // Resource is not present in cache => Has to be retrieved from repo
                 else {
-                    let response = await fetch('https://raw.githubusercontent.com/ismael-castell/Replacements/main/' + isTracking[1][0] + '/' + isTracking[1].concat(".js"));
+                    let response = await fetch(base_repo_path + '/' + isTracking[1][0] + '/' + isTracking[1].concat(".js"));
                     new_data = await response.arrayBuffer();
                     console.debug("Clean resource retrieved from REPO => hash: " + isTracking[1]);
                 }
@@ -398,6 +399,24 @@ browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 // The extension should also maintain a counter of the times each clean script has been used, in order to store only
 // the most used ones.
 
+async function getCacheMinAppears() {
+    let cacheMinAppears = (await browser.storage.local.get("cacheMinAppears")).cacheMinAppears;
+    if (cacheMinAppears === undefined) {
+        cacheMinAppears = 5;
+        browser.storage.local.set({cacheMinAppears});
+    }
+    return cacheMinAppears;
+}
+
+
+async function getCacheMaxScripts() {
+    let cacheMaxScripts = (await browser.storage.local.get("cacheMaxScripts")).cacheMaxScripts;
+    if (cacheMaxScripts === undefined) {
+        cacheMaxScripts = 10;
+        browser.storage.local.set({cacheMaxScripts});
+    }
+    return cacheMaxScripts;
+}
 
 async function updateHashCounter(resourceHash) {
     // Updates hash resource counter + returns true if the script corresponding to
@@ -425,7 +444,7 @@ async function updateHashCounter(resourceHash) {
     }
     // console.debug(hashCounter); // DEBUG
     browser.storage.local.set({hashCounter});
-    return (cacheMinNumber === counter);
+    return ((await getCacheMinAppears()) === counter);
 }
 
 async function resetHashCounter(resourceHash) {
@@ -454,7 +473,7 @@ async function storeInCache(resourceHash, resourceScript) {
     // resourceCache[index][1] => Resource script
     // resourceCache[index][2] => Timestamp that indicates last time resource was accessed
     let lastAccess = Date.now();
-    if (resourceCache.length === cacheMaxScripts) {
+    if (resourceCache.length === (await getCacheMaxScripts())) {
         // If the cache has reached its maximum size, the entry which has been used least recently
         // has to be substituted.
         let oldestIndex = 0;
@@ -466,7 +485,7 @@ async function storeInCache(resourceHash, resourceScript) {
             }
         }
         // When dropping an element from the cache we should reset its counter back to 0, because if not it would
-        // increase indefinitely and wouldn't be able to reach back the cacheMinNumber, and it would never be able
+        // increase indefinitely and wouldn't be able to reach back the cacheMinAppears, and it would never be able
         // to enter resourceCache again.
         await resetHashCounter(resourceCache[oldestIndex][0]);
         console.debug("[cache] Max Size reached. Dropped oldest entry (hash: " + resourceCache[oldestIndex][0] + ")");
@@ -619,7 +638,7 @@ async function sendStatsServer() {
     }
 
     console.debug("POST body => " + JSON.stringify({scripts, hosts}));
-    const response = await fetch("http://127.0.0.1:5000/stats", {
+    const response = await fetch(base_stat_api_path + "/stats", {
         method: "POST",
         headers: {"Content-Type": "application/json; charset=UTF-8"},
         body: JSON.stringify({scripts, hosts})
