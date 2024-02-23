@@ -1,5 +1,7 @@
 # Substitutor - 2024
 
+## !! Moved project to: https://github.com/CBA-UPC/eprivo-cleaner !!
+
 Updated version of the substitutor Firefox plugin, from the ePrivo project.
 
 ![Substitutor Popup](images/substitutor_popup.png)
